@@ -18,12 +18,12 @@ function App() {
         body: JSON.stringify({ url }),
       });
   
-      const data = await response.json();
-      
       if (!response.ok) {
+        const data = await response.json();
         throw new Error(data.details || data.error || 'Failed to process video');
       }
   
+      const data = await response.json();
       if (!data || !data.downloadUrl || !data.title) {
         throw new Error('Invalid response from server');
       }
@@ -37,7 +37,9 @@ function App() {
       console.error('Frontend Error:', error);
       setDownloadState({ 
         status: 'error',
-        error: error.message || 'Failed to process video'
+        error: error.message === 'Failed to fetch' 
+          ? 'Cannot connect to server' 
+          : error.message || 'Failed to process video'
       });
     }
   };

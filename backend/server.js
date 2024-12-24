@@ -6,7 +6,10 @@ const contentDisposition = require('content-disposition');
 const app = express();
 app.use(express.json());
 app.use(cors({
-  origin: ['https://youtube-downloader-wdq8.vercel.app'],
+  origin: [
+    'https://youtube-downloader-wdq8.vercel.app',
+    'http://localhost:5173' // For local development
+  ],
   methods: ['GET', 'POST'],
   credentials: true
 }));
