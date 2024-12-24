@@ -26,19 +26,19 @@ function App() {
       console.log('Response data:', data);
 
       if (!response.ok) {
-        const data = await response.json();
         throw new Error(data.details || data.error || 'Failed to process video');
       }
-  
+
       if (!data || !data.downloadUrl || !data.title) {
         throw new Error('Invalid response from server');
       }
-  
+
       setVideoDetails(data);
       setDownloadState({ 
         status: 'success',
         downloadUrl: data.downloadUrl
       });
+
     } catch (error: any) {
       console.error('Frontend Error:', error);
       setDownloadState({ 
