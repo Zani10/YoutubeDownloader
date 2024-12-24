@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { VideoDetails } from '../types';
+import { API_URL } from '../api/config';
 
 interface VideoPreviewProps {
   video: VideoDetails;
@@ -16,10 +17,7 @@ export function VideoPreview({ video }: VideoPreviewProps) {
       setIsDownloading(true);
       setDownloadProgress(0);
       
-      const downloadUrl = `http://localhost:3001/api/download-video?${new URLSearchParams({
-        url: encodeURIComponent(video.downloadUrl),
-        title: encodeURIComponent(video.title)
-      }).toString()}`;
+      const downloadUrl = `${API_URL}/api/download-video?url=${encodeURIComponent(video.downloadUrl)}&title=${encodeURIComponent(video.title)}`;
 
       // Start download with fetch to track progress
       const response = await fetch(downloadUrl);
