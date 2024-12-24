@@ -23,19 +23,29 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
-    // Get video info with thumbnail and duration
+    // Get video info with better options
     const videoInfo = await youtubedl(url, {
       dumpSingleJson: true,
+      noCheckCertificates: true,
       noWarnings: true,
-      noCallHome: true,
-      format: 'best[ext=mp4]',
+      preferFreeFormats: true,
+      addHeader: [
+        'referer:youtube.com',
+        'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      ],
+      format: 'best[ext=mp4]'
     });
 
     if (!videoInfo) {
       throw new Error('Failed to fetch video information');
     }
 
-    console.log('Video info received:', videoInfo);
+    console.log('Video info received:', {
+      title: videoInfo.title,
+      format: videoInfo.format,
+      ext: videoInfo.ext,
+      url: videoInfo.url
+    });
 
     // Format duration from seconds to MM:SS
     const duration = videoInfo.duration
@@ -44,8 +54,8 @@ app.post('/api/download', async (req, res) => {
 
     res.send({
       title: videoInfo.title,
-      downloadUrl: videoInfo.url,
-      format: videoInfo.format_note || `${videoInfo.height}p`,
+      downloadUrl: videoInfo.url || videoInfo.webpage_url,
+      format: videoInfo.format_note || 'mp4',
       isAudioIncluded: true,
       duration: duration,
       thumbnail: videoInfo.thumbnail,
@@ -53,7 +63,7 @@ app.post('/api/download', async (req, res) => {
       description: videoInfo.description || '',
       uploadDate: videoInfo.upload_date,
       views: videoInfo.view_count,
-      resolution: `${videoInfo.width}x${videoInfo.height}`,
+      resolution: videoInfo.resolution || 'Unknown',
       fps: videoInfo.fps || 'Unknown',
       quality: videoInfo.height ? `${videoInfo.height}p` : 'Unknown'
     });
