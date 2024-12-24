@@ -30,14 +30,6 @@ app.post('/api/download', async (req, res) => {
       console.error('Error getting youtube-dl version:', e);
     }
 
-    // Try with simpler options first
-    const videoInfo = await youtubedl(url, {
-      dumpSingleJson: true,
-      format: 'mp4'
-    });
-
-    console.log('Video info received:', JSON.stringify(videoInfo, null, 2));
-
     // Convert shorts URL to regular URL if needed
     const videoUrl = url.includes('/shorts/') 
       ? url.replace('/shorts/', '/watch?v=')
@@ -54,7 +46,7 @@ app.post('/api/download', async (req, res) => {
       format: 'bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best'
     });
 
-    console.log('Raw video info:', videoInfo);
+    console.log('Raw video info:', JSON.stringify(videoInfo, null, 2));
 
     if (!videoInfo) {
       throw new Error('Failed to fetch video information');
