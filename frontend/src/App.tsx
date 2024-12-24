@@ -22,17 +22,27 @@ function App() {
       });
 
       console.log('Response status:', response.status);
+      
+      // Get the response data first
       const data = await response.json();
       console.log('Response data:', data);
 
+      // Then check if response was ok
       if (!response.ok) {
-        throw new Error(data.details || data.error || 'Failed to process video');
+        // Use the error details from the response
+        throw new Error(
+          data.details || 
+          data.error || 
+          `Server error: ${response.status}`
+        );
       }
 
+      // Validate the data
       if (!data || !data.downloadUrl || !data.title) {
         throw new Error('Invalid response from server');
       }
 
+      // Update state with the video details
       setVideoDetails(data);
       setDownloadState({ 
         status: 'success',
@@ -45,7 +55,7 @@ function App() {
         status: 'error',
         error: error.message === 'Failed to fetch' 
           ? 'Cannot connect to server' 
-          : error.message || 'Failed to process video'
+          : error.message
       });
     }
   };
