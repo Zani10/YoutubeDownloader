@@ -24,13 +24,17 @@ function App() {
         throw new Error(data.details || data.error || 'Failed to process video');
       }
   
+      if (!data || !data.downloadUrl) {
+        throw new Error('Invalid response from server');
+      }
+  
       setVideoDetails(data);
       setDownloadState({ 
         status: 'success',
         downloadUrl: data.downloadUrl
       });
     } catch (error: any) {
-      console.error('Frontend Error:', error.message);
+      console.error('Frontend Error:', error);
       setDownloadState({ 
         status: 'error',
         error: error.message || 'Failed to process video',

@@ -81,16 +81,20 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
-    // Get video info with thumbnail and duration
     const videoInfo = await youtubedl(url, {
       dumpSingleJson: true,
       noWarnings: true,
       noCallHome: true,
       preferFreeFormats: true,
-      format: 'bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best', // Get best quality
+      format: 'bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best',
     });
 
-    // Find the best format with both video and audio
+    console.log('Video info received:', videoInfo);
+
+    if (!videoInfo || !videoInfo.formats) {
+      throw new Error('Invalid video information received');
+    }
+
     const format = videoInfo.formats.find(f => 
       f.ext === 'mp4' && 
       f.acodec !== 'none' && 
@@ -101,37 +105,28 @@ app.post('/api/download', async (req, res) => {
       throw new Error('No suitable format found');
     }
 
-    // Format duration from seconds to MM:SS
     const duration = videoInfo.duration
       ? new Date(videoInfo.duration * 1000).toISOString().substr(14, 5)
       : 'Unknown';
 
-    console.log('Selected format:', {
-      format: format.format,
-      ext: format.ext,
-      filesize: format.filesize,
-      resolution: `${format.width}x${format.height}`,
-      fps: format.fps
-    });
-
     res.send({
-      title: videoInfo.title,
+      title: videoInfo.title || 'Untitled',
       downloadUrl: format.url,
-      format: `${format.height}p`,
+      format: format.height ? `${format.height}p` : 'Unknown',
       isAudioIncluded: true,
       duration: duration,
-      thumbnail: videoInfo.thumbnail,
-      filesize: format.filesize,
+      thumbnail: videoInfo.thumbnail || '',
+      filesize: format.filesize || 0,
       description: videoInfo.description || '',
-      uploadDate: videoInfo.upload_date,
-      views: videoInfo.view_count,
-      resolution: `${format.width}x${format.height}`,
+      uploadDate: videoInfo.upload_date || '',
+      views: videoInfo.view_count || 0,
+      resolution: format.width && format.height ? `${format.width}x${format.height}` : 'Unknown',
       fps: format.fps || 'Unknown',
       quality: format.height ? `${format.height}p` : 'Unknown'
     });
 
   } catch (error) {
-    console.error('Detailed error:', error);
+    console.error('Detailed backend error:', error);
     
     let errorMessage = error.message;
     if (error.message.includes('Video unavailable')) {
