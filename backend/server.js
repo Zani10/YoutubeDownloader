@@ -84,57 +84,72 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
-    // Get video info with simpler options
+    // Get video info with youtube-dl
     const videoInfo = await youtubedl(url, {
       dumpSingleJson: true,
-      format: 'mp4',
       noWarnings: true,
       noCallHome: true,
+      preferFreeFormats: true,
+      format: 'bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best', // This format string should work better
     });
 
-    console.log('Raw video info:', videoInfo);
-
-    // Basic validation
-    if (!videoInfo || !videoInfo.title) {
-      throw new Error('Invalid video information received');
+    if (!videoInfo) {
+      throw new Error('Failed to fetch video information');
     }
 
-    // Format duration
+    // Get all formats and sort them by quality
+    const formats = videoInfo.formats
+      .filter(f => f.ext === 'mp4')
+      .sort((a, b) => (b.height || 0) - (a.height || 0));
+
+    // Get the best quality format
+    const format = formats[0];
+
+    if (!format) {
+      throw new Error('No suitable format found');
+    }
+
+    // Format duration from seconds to MM:SS
     const duration = videoInfo.duration
       ? new Date(videoInfo.duration * 1000).toISOString().substr(14, 5)
       : 'Unknown';
 
-    // Prepare response
-    const response = {
+    console.log('Selected format:', {
+      format_id: format.format_id,
+      ext: format.ext,
+      resolution: `${format.width}x${format.height}`,
+      filesize: format.filesize
+    });
+
+    res.send({
       title: videoInfo.title,
-      downloadUrl: videoInfo.webpage_url || url, // Use original URL as fallback
-      format: 'mp4',
+      downloadUrl: format.url,
+      format: format.format_note || `${format.height}p`,
       isAudioIncluded: true,
       duration: duration,
       thumbnail: videoInfo.thumbnail,
-      filesize: videoInfo.filesize,
+      filesize: format.filesize,
       description: videoInfo.description || '',
       uploadDate: videoInfo.upload_date,
       views: videoInfo.view_count,
-      resolution: videoInfo.resolution || 'Unknown',
-      fps: videoInfo.fps || 'Unknown',
-      quality: videoInfo.height ? `${videoInfo.height}p` : 'Unknown'
-    };
-
-    console.log('Sending response:', response);
-    res.send(response);
+      resolution: `${format.width}x${format.height}`,
+      fps: format.fps || 'Unknown',
+      quality: format.height ? `${format.height}p` : 'Unknown'
+    });
 
   } catch (error) {
     console.error('Download error:', error);
     console.error('Error stack:', error.stack);
     
-    let errorMessage = 'Failed to process video';
+    let errorMessage;
     if (error.message.includes('Video unavailable')) {
       errorMessage = 'Video is unavailable or age-restricted';
     } else if (error.message.includes('No suitable')) {
       errorMessage = 'No suitable format found for this video';
-    } else if (error.message.includes('Invalid video')) {
-      errorMessage = 'Invalid video URL or format';
+    } else if (error.message.includes('formats')) {
+      errorMessage = 'No video formats available';
+    } else {
+      errorMessage = 'Failed to process video. Please try another video.';
     }
 
     res.status(500).send({ 
