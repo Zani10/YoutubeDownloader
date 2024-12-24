@@ -22,30 +22,47 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
+    // Get video info
     const videoInfo = await youtubedl(url, {
       dumpSingleJson: true,
       format: 'best[ext=mp4]'
     });
 
+    // Validate required fields
+    if (!videoInfo || !videoInfo.title || !videoInfo.url) {
+      throw new Error('Invalid video information received');
+    }
+
+    console.log('Video info:', {
+      title: videoInfo.title,
+      url: videoInfo.url,
+      format: videoInfo.format
+    });
+
+    // Format duration
     const duration = videoInfo.duration
       ? new Date(videoInfo.duration * 1000).toISOString().substr(14, 5)
       : 'Unknown';
 
-    res.send({
+    // Prepare response with fallback values
+    const response = {
       title: videoInfo.title,
       downloadUrl: videoInfo.url,
       format: 'mp4',
       isAudioIncluded: true,
       duration: duration,
-      thumbnail: videoInfo.thumbnail,
-      filesize: videoInfo.filesize,
+      thumbnail: videoInfo.thumbnail || '',
+      filesize: videoInfo.filesize || 0,
       description: videoInfo.description || '',
-      uploadDate: videoInfo.upload_date,
-      views: videoInfo.view_count,
+      uploadDate: videoInfo.upload_date || '',
+      views: videoInfo.view_count || 0,
       resolution: videoInfo.resolution || 'Unknown',
       fps: videoInfo.fps || 'Unknown',
       quality: videoInfo.height ? `${videoInfo.height}p` : 'Unknown'
-    });
+    };
+
+    console.log('Sending response:', response);
+    res.send(response);
 
   } catch (error) {
     console.error('Download error:', error);
