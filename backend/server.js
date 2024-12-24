@@ -23,8 +23,20 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
-    // Get video info with thumbnail and duration
-    const videoInfo = await youtubedl(url, {
+    // Convert Shorts URL to regular video URL
+    const videoId = url.includes('/shorts/') 
+      ? url.split('/shorts/')[1].split('?')[0]
+      : url.split('v=')[1]?.split('&')[0];
+
+    if (!videoId) {
+      throw new Error('Invalid YouTube URL');
+    }
+
+    const regularUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    console.log('Processing URL:', regularUrl);
+
+    // Get video info with youtube-dl
+    const videoInfo = await youtubedl(regularUrl, {
       dumpSingleJson: true,
       noWarnings: true,
       noCallHome: true,
@@ -69,6 +81,8 @@ app.post('/api/download', async (req, res) => {
       errorMessage = 'No suitable format found for this video';
     } else if (error.message.includes('No video formats')) {
       errorMessage = 'Video format not available. Try another video.';
+    } else if (error.message.includes('Invalid YouTube URL')) {
+      errorMessage = 'Invalid YouTube URL format';
     }
 
     res.status(500).send({ 
