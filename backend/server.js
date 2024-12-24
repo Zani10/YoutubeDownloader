@@ -23,43 +23,46 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
-    // Convert Shorts URL to regular video URL
-    const videoId = url.includes('/shorts/') 
-      ? url.split('/shorts/')[1].split('?')[0]
-      : url.split('v=')[1]?.split('&')[0];
+    // Convert Shorts URL to regular video URL if needed
+    const videoUrl = url.includes('/shorts/') 
+      ? url.replace('/shorts/', '/watch?v=')
+      : url;
 
-    if (!videoId) {
-      throw new Error('Invalid YouTube URL');
-    }
-
-    const regularUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    console.log('Processing URL:', regularUrl);
+    console.log('Processing URL:', videoUrl);
 
     // Get video info with youtube-dl
-    const videoInfo = await youtubedl(regularUrl, {
+    const videoInfo = await youtubedl(videoUrl, {
       dumpSingleJson: true,
       noWarnings: true,
       noCallHome: true,
-      format: 'best[ext=mp4]',
+      noCheckCertificates: true,
+      preferFreeFormats: true,
+      addHeader: [
+        'referer:youtube.com',
+        'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      ],
+      format: 'best[ext=mp4]'
     });
 
     if (!videoInfo) {
       throw new Error('Failed to fetch video information');
     }
 
-    console.log('Video info received:', videoInfo);
-
-    // Format duration from seconds to MM:SS
-    const duration = videoInfo.duration
-      ? new Date(videoInfo.duration * 1000).toISOString().substr(14, 5)
-      : 'Unknown';
+    console.log('Video info received:', {
+      title: videoInfo.title,
+      url: videoInfo.url,
+      format: videoInfo.format,
+      ext: videoInfo.ext
+    });
 
     res.send({
       title: videoInfo.title,
       downloadUrl: videoInfo.url,
       format: videoInfo.format_note || `${videoInfo.height}p`,
       isAudioIncluded: true,
-      duration: duration,
+      duration: videoInfo.duration 
+        ? new Date(videoInfo.duration * 1000).toISOString().substr(14, 5)
+        : 'Unknown',
       thumbnail: videoInfo.thumbnail,
       filesize: videoInfo.filesize,
       description: videoInfo.description || '',
@@ -81,8 +84,6 @@ app.post('/api/download', async (req, res) => {
       errorMessage = 'No suitable format found for this video';
     } else if (error.message.includes('No video formats')) {
       errorMessage = 'Video format not available. Try another video.';
-    } else if (error.message.includes('Invalid YouTube URL')) {
-      errorMessage = 'Invalid YouTube URL format';
     }
 
     res.status(500).send({ 
