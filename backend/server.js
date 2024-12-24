@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const youtubedl = require('youtube-dl-exec');
-const contentDisposition = require('content-disposition');
 
 const app = express();
 app.use(express.json());
@@ -23,39 +22,19 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
-    // Get video info with better options
     const videoInfo = await youtubedl(url, {
       dumpSingleJson: true,
-      noCheckCertificates: true,
-      noWarnings: true,
-      preferFreeFormats: true,
-      addHeader: [
-        'referer:youtube.com',
-        'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      ],
       format: 'best[ext=mp4]'
     });
 
-    if (!videoInfo) {
-      throw new Error('Failed to fetch video information');
-    }
-
-    console.log('Video info received:', {
-      title: videoInfo.title,
-      format: videoInfo.format,
-      ext: videoInfo.ext,
-      url: videoInfo.url
-    });
-
-    // Format duration from seconds to MM:SS
     const duration = videoInfo.duration
       ? new Date(videoInfo.duration * 1000).toISOString().substr(14, 5)
       : 'Unknown';
 
     res.send({
       title: videoInfo.title,
-      downloadUrl: videoInfo.url || videoInfo.webpage_url,
-      format: videoInfo.format_note || 'mp4',
+      downloadUrl: videoInfo.url,
+      format: 'mp4',
       isAudioIncluded: true,
       duration: duration,
       thumbnail: videoInfo.thumbnail,
@@ -70,70 +49,14 @@ app.post('/api/download', async (req, res) => {
 
   } catch (error) {
     console.error('Download error:', error);
-    console.error('Error stack:', error.stack);
-    
-    let errorMessage = error.message;
-    if (error.message.includes('Video unavailable')) {
-      errorMessage = 'Video is unavailable or age-restricted';
-    } else if (error.message.includes('No suitable')) {
-      errorMessage = 'No suitable format found for this video';
-    } else if (error.message.includes('No video formats')) {
-      errorMessage = 'Video format not available. Try another video.';
-    }
-
     res.status(500).send({ 
       error: 'Failed to process video',
-      details: errorMessage
+      details: error.message
     });
-  }
-});
-
-app.get('/api/download-video', async (req, res) => {
-  const { url, title } = req.query;
-  
-  if (!url) {
-    return res.status(400).send('URL is required');
-  }
-
-  try {
-    const decodedUrl = decodeURIComponent(url);
-    const cleanTitle = decodeURIComponent(title)
-      .replace(/[^\w\s\-\u0600-\u06FF]/g, '')
-      .trim()
-      .replace(/\s+/g, '_')
-      .substring(0, 100);
-
-    console.log('Starting download for:', decodedUrl);
-
-    // Download video using youtube-dl-exec
-    const video = youtubedl.exec(decodedUrl, {
-      format: 'best[ext=mp4]',
-      output: '-', // Output to stdout
-    }, { stdio: ['ignore', 'pipe'] });
-
-    // Set headers
-    res.setHeader('Content-Type', 'video/mp4');
-    res.setHeader('Content-Disposition', contentDisposition(`${cleanTitle}.mp4`));
-
-    // Pipe the video stream to response
-    video.stdout.pipe(res);
-
-    video.stdout.on('error', (error) => {
-      console.error('Stream error:', error);
-      if (!res.headersSent) {
-        res.status(500).send('Download failed');
-      }
-    });
-
-  } catch (error) {
-    console.error('Download error:', error);
-    if (!res.headersSent) {
-      res.status(500).send('Download failed');
-    }
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

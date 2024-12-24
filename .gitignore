@@ -31,3 +31,9 @@ yarn-error.log*
 
 # Temp files
 temp_*.mp4
+
+# Don't ignore the bin directory itself
+!backend/bin/
+# But ignore everything in it except .gitkeep
+backend/bin/*
+!backend/bin/.gitkeep
