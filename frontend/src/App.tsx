@@ -3,6 +3,7 @@ import { VideoInput } from './components/VideoInput';
 import { Alert } from './components/Alert';
 import { VideoPreview } from './components/VideoPreview';
 import type { DownloadState, VideoDetails } from './types';
+import { API_URL } from './api/config';
 
 function App() {
   const [downloadState, setDownloadState] = useState<DownloadState>({ status: 'idle' });
@@ -11,7 +12,7 @@ function App() {
   const handleDownload = async (url: string) => {
     setDownloadState({ status: 'loading' });
     try {
-      const response = await fetch('http://localhost:3001/api/download', {
+      const response = await fetch(`${API_URL}/api/download`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
