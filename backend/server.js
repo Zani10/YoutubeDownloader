@@ -55,6 +55,15 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
+    // First check if youtube-dl is working
+    try {
+      const version = await youtubedl('--version');
+      console.log('youtube-dl version:', version);
+    } catch (e) {
+      console.error('youtube-dl not working:', e);
+      throw new Error('youtube-dl is not properly installed');
+    }
+
     // Convert shorts URL to regular URL if needed
     const videoUrl = url.includes('/shorts/') 
       ? url.replace('/shorts/', '/watch?v=')
@@ -62,23 +71,33 @@ app.post('/api/download', async (req, res) => {
 
     console.log('Processing URL:', videoUrl);
 
-    // Try with simpler format first
-    const videoInfo = await youtubedl(videoUrl, {
+    // Try with different format options
+    const options = {
       dumpSingleJson: true,
       noWarnings: true,
       noCallHome: true,
-      format: 'best[ext=mp4]'
-    });
+      format: 'mp4',
+      noCheckCertificate: true,
+      addHeader: [
+        'referer:youtube.com',
+        'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      ]
+    };
 
-    console.log('Video info received:', JSON.stringify({
-      title: videoInfo?.title,
-      format: videoInfo?.format,
-      url: videoInfo?.url || videoInfo?.webpage_url
-    }, null, 2));
+    console.log('Using options:', options);
 
-    if (!videoInfo || !videoInfo.title) {
+    const videoInfo = await youtubedl(videoUrl, options);
+
+    if (!videoInfo) {
+      console.error('No video info received');
       throw new Error('Failed to fetch video information');
     }
+
+    console.log('Video info received:', {
+      title: videoInfo.title,
+      format: videoInfo.format,
+      url: videoInfo.url || videoInfo.webpage_url
+    });
 
     // Format duration
     const duration = videoInfo.duration
