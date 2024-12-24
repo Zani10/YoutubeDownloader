@@ -90,12 +90,24 @@ app.post('/api/download', async (req, res) => {
       noWarnings: true,
       noCallHome: true,
       preferFreeFormats: true,
-      format: 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]', // Updated format string for better compatibility
+      format: 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]',
     });
+
+    // Validate video info
+    if (!videoInfo) {
+      throw new Error('Failed to fetch video information');
+    }
+
+    console.log('Raw video info:', videoInfo);
+
+    // Ensure formats exist
+    if (!videoInfo.formats || !Array.isArray(videoInfo.formats)) {
+      throw new Error('No video formats available');
+    }
 
     console.log('Video info received:', {
       title: videoInfo.title,
-      formats: videoInfo.formats?.length || 0,
+      formats: videoInfo.formats.length,
       duration: videoInfo.duration,
       filesize: videoInfo.filesize,
       format_id: videoInfo.format_id
@@ -103,12 +115,19 @@ app.post('/api/download', async (req, res) => {
 
     // Get all formats and sort them by quality
     const formats = videoInfo.formats
-      .filter(f => 
-        f.ext === 'mp4' && 
-        (f.acodec !== 'none' || f.format_note === 'Default') && 
-        (f.vcodec !== 'none' || f.format_note === 'Default')
-      )
+      .filter(f => {
+        // Ensure format has required properties
+        if (!f || typeof f !== 'object') return false;
+        
+        return f.ext === 'mp4' && 
+          (f.acodec !== 'none' || f.format_note === 'Default') && 
+          (f.vcodec !== 'none' || f.format_note === 'Default');
+      })
       .sort((a, b) => (b.height || 0) - (a.height || 0));
+
+    if (formats.length === 0) {
+      throw new Error('No suitable MP4 formats found');
+    }
 
     console.log('Available formats:', formats.map(f => ({
       format_id: f.format_id,
@@ -120,10 +139,6 @@ app.post('/api/download', async (req, res) => {
 
     // Get the best quality format
     const format = formats[0];
-
-    if (!format) {
-      throw new Error('No suitable format found');
-    }
 
     // Format duration from seconds to MM:SS
     const duration = videoInfo.duration
@@ -139,17 +154,17 @@ app.post('/api/download', async (req, res) => {
     });
 
     res.send({
-      title: videoInfo.title,
+      title: videoInfo.title || 'Untitled',
       downloadUrl: format.url,
       format: format.format_note || `${format.height}p`,
       isAudioIncluded: true,
       duration: duration,
-      thumbnail: videoInfo.thumbnail,
-      filesize: format.filesize,
+      thumbnail: videoInfo.thumbnail || '',
+      filesize: format.filesize || 0,
       description: videoInfo.description || '',
-      uploadDate: videoInfo.upload_date,
-      views: videoInfo.view_count,
-      resolution: format.resolution || `${format.width}x${format.height}`,
+      uploadDate: videoInfo.upload_date || '',
+      views: videoInfo.view_count || 0,
+      resolution: format.resolution || `${format.width}x${format.height}` || 'Unknown',
       fps: format.fps || 'Unknown',
       quality: format.height ? `${format.height}p` : format.format_note || 'Unknown'
     });
@@ -165,6 +180,8 @@ app.post('/api/download', async (req, res) => {
       errorMessage = 'No suitable format found for this video';
     } else if (error.message.includes('No video formats')) {
       errorMessage = 'Video format not available. Try another video.';
+    } else if (error.message.includes('Failed to fetch')) {
+      errorMessage = 'Failed to fetch video information. Please try again.';
     }
 
     res.status(500).send({ 
