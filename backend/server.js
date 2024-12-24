@@ -23,46 +23,31 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
-    // Convert Shorts URL to regular video URL if needed
-    const videoUrl = url.includes('/shorts/') 
-      ? url.replace('/shorts/', '/watch?v=')
-      : url;
-
-    console.log('Processing URL:', videoUrl);
-
-    // Get video info with youtube-dl
-    const videoInfo = await youtubedl(videoUrl, {
+    // Get video info with thumbnail and duration
+    const videoInfo = await youtubedl(url, {
       dumpSingleJson: true,
       noWarnings: true,
       noCallHome: true,
-      noCheckCertificates: true,
-      preferFreeFormats: true,
-      addHeader: [
-        'referer:youtube.com',
-        'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      ],
-      format: 'best[ext=mp4]'
+      format: 'best[ext=mp4]',
     });
 
     if (!videoInfo) {
       throw new Error('Failed to fetch video information');
     }
 
-    console.log('Video info received:', {
-      title: videoInfo.title,
-      url: videoInfo.url,
-      format: videoInfo.format,
-      ext: videoInfo.ext
-    });
+    console.log('Video info received:', videoInfo);
+
+    // Format duration from seconds to MM:SS
+    const duration = videoInfo.duration
+      ? new Date(videoInfo.duration * 1000).toISOString().substr(14, 5)
+      : 'Unknown';
 
     res.send({
       title: videoInfo.title,
       downloadUrl: videoInfo.url,
       format: videoInfo.format_note || `${videoInfo.height}p`,
       isAudioIncluded: true,
-      duration: videoInfo.duration 
-        ? new Date(videoInfo.duration * 1000).toISOString().substr(14, 5)
-        : 'Unknown',
+      duration: duration,
       thumbnail: videoInfo.thumbnail,
       filesize: videoInfo.filesize,
       description: videoInfo.description || '',

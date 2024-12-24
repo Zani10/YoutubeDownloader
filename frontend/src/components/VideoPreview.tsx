@@ -17,10 +17,7 @@ export function VideoPreview({ video }: VideoPreviewProps) {
       setIsDownloading(true);
       setDownloadProgress(0);
       
-      const downloadUrl = `${API_URL}/api/download-video?${new URLSearchParams({
-        url: encodeURIComponent(video.downloadUrl),
-        title: encodeURIComponent(video.title)
-      }).toString()}`;
+      const downloadUrl = `${API_URL}/api/download-video?url=${encodeURIComponent(video.downloadUrl)}&title=${encodeURIComponent(video.title)}`;
 
       // Start download with fetch to track progress
       const response = await fetch(downloadUrl);
@@ -72,7 +69,7 @@ export function VideoPreview({ video }: VideoPreviewProps) {
     }
   };
 
-  const formatFileSize = (bytes: number) => {
+  const formatFileSize = (bytes: number | undefined) => {
     if (!bytes) return 'Unknown size';
     const units = ['B', 'KB', 'MB', 'GB'];
     let size = bytes;
@@ -84,7 +81,7 @@ export function VideoPreview({ video }: VideoPreviewProps) {
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   };
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: string | undefined) => {
     if (!dateStr) return 'Unknown date';
     return new Date(
       dateStr.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')
@@ -93,11 +90,13 @@ export function VideoPreview({ video }: VideoPreviewProps) {
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <img 
-        src={video.thumbnail} 
-        alt={video.title}
-        className="w-full h-48 object-cover"
-      />
+      {video.thumbnail && (
+        <img 
+          src={video.thumbnail} 
+          alt={video.title}
+          className="w-full h-48 object-cover"
+        />
+      )}
       <div className="p-4 space-y-4">
         <h2 className="text-xl font-semibold text-gray-800">{video.title}</h2>
         
