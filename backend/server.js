@@ -81,59 +81,67 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
+    // Get video info with thumbnail and duration
     const videoInfo = await youtubedl(url, {
       dumpSingleJson: true,
       noWarnings: true,
       noCallHome: true,
       preferFreeFormats: true,
-      format: 'bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best',
+      format: 'best[ext=mp4]', // Simplified format selection
     });
 
-    console.log('Video info received:', videoInfo);
+    console.log('Video info received:', {
+      title: videoInfo.title,
+      formats: videoInfo.formats?.length || 0,
+      duration: videoInfo.duration,
+      filesize: videoInfo.filesize
+    });
 
-    if (!videoInfo || !videoInfo.formats) {
-      throw new Error('Invalid video information received');
+    if (!videoInfo || !videoInfo.formats || !videoInfo.formats.length) {
+      throw new Error('No video formats available');
     }
 
-    const format = videoInfo.formats.find(f => 
-      f.ext === 'mp4' && 
-      f.acodec !== 'none' && 
-      f.vcodec !== 'none'
-    );
+    // Find best format with both video and audio
+    const format = videoInfo.formats
+      .filter(f => f.ext === 'mp4' && f.acodec !== 'none' && f.vcodec !== 'none')
+      .sort((a, b) => (b.height || 0) - (a.height || 0))[0];
 
     if (!format) {
-      throw new Error('No suitable format found');
+      throw new Error('No suitable MP4 format found');
     }
 
-    const duration = videoInfo.duration
-      ? new Date(videoInfo.duration * 1000).toISOString().substr(14, 5)
-      : 'Unknown';
+    console.log('Selected format:', {
+      format_id: format.format_id,
+      ext: format.ext,
+      resolution: format.resolution,
+      filesize: format.filesize
+    });
 
     res.send({
-      title: videoInfo.title || 'Untitled',
+      title: videoInfo.title,
       downloadUrl: format.url,
-      format: format.height ? `${format.height}p` : 'Unknown',
+      format: format.format_note || `${format.height}p`,
       isAudioIncluded: true,
-      duration: duration,
-      thumbnail: videoInfo.thumbnail || '',
-      filesize: format.filesize || 0,
+      duration: videoInfo.duration 
+        ? new Date(videoInfo.duration * 1000).toISOString().substr(14, 5)
+        : 'Unknown',
+      thumbnail: videoInfo.thumbnail,
+      filesize: format.filesize,
       description: videoInfo.description || '',
-      uploadDate: videoInfo.upload_date || '',
-      views: videoInfo.view_count || 0,
-      resolution: format.width && format.height ? `${format.width}x${format.height}` : 'Unknown',
+      uploadDate: videoInfo.upload_date,
+      views: videoInfo.view_count,
+      resolution: format.resolution || `${format.width}x${format.height}`,
       fps: format.fps || 'Unknown',
       quality: format.height ? `${format.height}p` : 'Unknown'
     });
 
   } catch (error) {
-    console.error('Detailed backend error:', error);
+    console.error('Download error:', error);
+    console.error('Error stack:', error.stack);
     
-    let errorMessage = error.message;
-    if (error.message.includes('Video unavailable')) {
-      errorMessage = 'Video is unavailable or age-restricted';
-    } else if (error.message.includes('No suitable')) {
-      errorMessage = 'No suitable format found for this video';
-    }
+    const errorMessage = error.message.includes('Video unavailable')
+      ? 'Video is unavailable or age-restricted'
+      : error.message;
 
     res.status(500).send({ 
       error: 'Failed to process video',

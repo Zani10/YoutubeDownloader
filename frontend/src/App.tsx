@@ -24,7 +24,7 @@ function App() {
         throw new Error(data.details || data.error || 'Failed to process video');
       }
   
-      if (!data || !data.downloadUrl) {
+      if (!data || !data.downloadUrl || !data.title) {
         throw new Error('Invalid response from server');
       }
   
@@ -37,7 +37,7 @@ function App() {
       console.error('Frontend Error:', error);
       setDownloadState({ 
         status: 'error',
-        error: error.message || 'Failed to process video',
+        error: error.message || 'Failed to process video'
       });
     }
   };
