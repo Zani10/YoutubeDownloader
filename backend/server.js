@@ -5,7 +5,11 @@ const contentDisposition = require('content-disposition');
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://your-frontend-domain.vercel.app'],
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 
 app.get('/api/download-video', async (req, res) => {
   const { url, title } = req.query;
