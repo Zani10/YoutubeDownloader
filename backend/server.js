@@ -22,22 +22,27 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
-    // Get video info
-    const videoInfo = await youtubedl(url, {
+    // Convert shorts URL to regular URL if needed
+    const videoUrl = url.includes('/shorts/') 
+      ? url.replace('/shorts/', '/watch?v=')
+      : url;
+
+    console.log('Processing URL:', videoUrl);
+
+    // Get video info with format that worked before
+    const videoInfo = await youtubedl(videoUrl, {
       dumpSingleJson: true,
-      format: 'best[ext=mp4]'
+      noWarnings: true,
+      noCallHome: true,
+      preferFreeFormats: true,
+      format: 'bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best'
     });
 
-    // Validate required fields
-    if (!videoInfo || !videoInfo.title || !videoInfo.url) {
-      throw new Error('Invalid video information received');
+    console.log('Raw video info:', videoInfo);
+
+    if (!videoInfo) {
+      throw new Error('Failed to fetch video information');
     }
-
-    console.log('Video info:', {
-      title: videoInfo.title,
-      url: videoInfo.url,
-      format: videoInfo.format
-    });
 
     // Format duration
     const duration = videoInfo.duration
@@ -47,7 +52,7 @@ app.post('/api/download', async (req, res) => {
     // Prepare response with fallback values
     const response = {
       title: videoInfo.title,
-      downloadUrl: videoInfo.url,
+      downloadUrl: videoInfo.url || videoInfo.webpage_url,
       format: 'mp4',
       isAudioIncluded: true,
       duration: duration,
@@ -56,12 +61,22 @@ app.post('/api/download', async (req, res) => {
       description: videoInfo.description || '',
       uploadDate: videoInfo.upload_date || '',
       views: videoInfo.view_count || 0,
-      resolution: videoInfo.resolution || 'Unknown',
+      resolution: videoInfo.resolution || `${videoInfo.width || 0}x${videoInfo.height || 0}`,
       fps: videoInfo.fps || 'Unknown',
       quality: videoInfo.height ? `${videoInfo.height}p` : 'Unknown'
     };
 
-    console.log('Sending response:', response);
+    // Validate response
+    if (!response.title || !response.downloadUrl) {
+      throw new Error('Invalid video information received');
+    }
+
+    console.log('Sending response:', {
+      title: response.title,
+      url: response.downloadUrl,
+      format: response.format
+    });
+
     res.send(response);
 
   } catch (error) {
