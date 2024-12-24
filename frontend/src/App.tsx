@@ -11,19 +11,25 @@ function App() {
 
   const handleDownload = async (url: string) => {
     setDownloadState({ status: 'loading' });
+    console.log('Sending request to:', API_URL);
+    console.log('With URL:', url);
+    
     try {
       const response = await fetch(`${API_URL}/api/download`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       });
-  
+
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.details || data.error || 'Failed to process video');
       }
   
-      const data = await response.json();
       if (!data || !data.downloadUrl || !data.title) {
         throw new Error('Invalid response from server');
       }

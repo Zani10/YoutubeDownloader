@@ -22,6 +22,22 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
+    // Log the youtube-dl version
+    try {
+      const version = await youtubedl('--version');
+      console.log('youtube-dl version:', version);
+    } catch (e) {
+      console.error('Error getting youtube-dl version:', e);
+    }
+
+    // Try with simpler options first
+    const videoInfo = await youtubedl(url, {
+      dumpSingleJson: true,
+      format: 'mp4'
+    });
+
+    console.log('Video info received:', JSON.stringify(videoInfo, null, 2));
+
     // Convert shorts URL to regular URL if needed
     const videoUrl = url.includes('/shorts/') 
       ? url.replace('/shorts/', '/watch?v=')
