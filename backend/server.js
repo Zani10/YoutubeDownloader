@@ -84,13 +84,22 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
+    // Convert YouTube Shorts URL to regular YouTube URL
+    const videoUrl = url.replace('/shorts/', '/watch?v=');
+    console.log('Processing URL:', videoUrl);
+
     // Get video info with youtube-dl
-    const videoInfo = await youtubedl(url, {
+    const videoInfo = await youtubedl(videoUrl, {
       dumpSingleJson: true,
       noWarnings: true,
       noCallHome: true,
+      noCheckCertificates: true,
       preferFreeFormats: true,
-      format: 'bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best', // This format string should work better
+      addHeader: [
+        'referer:youtube.com',
+        'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      ],
+      format: 'best[ext=mp4]'
     });
 
     if (!videoInfo) {
