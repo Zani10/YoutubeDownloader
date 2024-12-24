@@ -13,6 +13,39 @@ app.use(cors({
   credentials: true
 }));
 
+app.get('/api/test-ytdl', async (req, res) => {
+  try {
+    const version = await youtubedl('--version');
+    console.log('youtube-dl version:', version);
+    res.send({ success: true, version: version });
+  } catch (error) {
+    console.error('youtube-dl test failed:', error);
+    res.status(500).send({ 
+      error: 'youtube-dl not working',
+      details: error.message 
+    });
+  }
+});
+
+app.get('/api/test-network', async (req, res) => {
+  try {
+    const response = await fetch('https://www.youtube.com');
+    const status = response.status;
+    console.log('YouTube connection test:', status);
+    res.send({ 
+      success: true, 
+      status: status,
+      message: 'Connected to YouTube'
+    });
+  } catch (error) {
+    console.error('Network test failed:', error);
+    res.status(500).send({ 
+      error: 'Cannot connect to YouTube',
+      details: error.message
+    });
+  }
+});
+
 app.post('/api/download', async (req, res) => {
   const { url } = req.body;
   console.log('Received URL:', url);
@@ -22,14 +55,6 @@ app.post('/api/download', async (req, res) => {
   }
 
   try {
-    // Log the youtube-dl version
-    try {
-      const version = await youtubedl('--version');
-      console.log('youtube-dl version:', version);
-    } catch (e) {
-      console.error('Error getting youtube-dl version:', e);
-    }
-
     // Convert shorts URL to regular URL if needed
     const videoUrl = url.includes('/shorts/') 
       ? url.replace('/shorts/', '/watch?v=')
@@ -37,18 +62,21 @@ app.post('/api/download', async (req, res) => {
 
     console.log('Processing URL:', videoUrl);
 
-    // Get video info with format that worked before
+    // Try with simpler format first
     const videoInfo = await youtubedl(videoUrl, {
       dumpSingleJson: true,
       noWarnings: true,
       noCallHome: true,
-      preferFreeFormats: true,
-      format: 'bestvideo[ext=mp4]+bestaudio/best[ext=mp4]/best'
+      format: 'best[ext=mp4]'
     });
 
-    console.log('Raw video info:', JSON.stringify(videoInfo, null, 2));
+    console.log('Video info received:', JSON.stringify({
+      title: videoInfo?.title,
+      format: videoInfo?.format,
+      url: videoInfo?.url || videoInfo?.webpage_url
+    }, null, 2));
 
-    if (!videoInfo) {
+    if (!videoInfo || !videoInfo.title) {
       throw new Error('Failed to fetch video information');
     }
 
