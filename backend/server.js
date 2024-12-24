@@ -90,26 +90,11 @@ app.post('/api/download', async (req, res) => {
       noWarnings: true,
       noCallHome: true,
       preferFreeFormats: true,
-      format: 'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]', // This format string worked before
+      format: 'best[ext=mp4]', // Simplified format selection
     });
 
-    console.log('Video info received:', {
-      title: videoInfo.title,
-      formats: videoInfo.formats?.length || 0,
-      duration: videoInfo.duration,
-      filesize: videoInfo.filesize
-    });
-
-    // Get all formats and sort them by quality
-    const formats = videoInfo.formats
-      .filter(f => f.ext === 'mp4' && f.acodec !== 'none' && f.vcodec !== 'none')
-      .sort((a, b) => (b.height || 0) - (a.height || 0));
-
-    // Get the best quality format
-    const format = formats[0];
-
-    if (!format) {
-      throw new Error('No suitable format found');
+    if (!videoInfo) {
+      throw new Error('Failed to fetch video information');
     }
 
     // Format duration from seconds to MM:SS
@@ -117,27 +102,39 @@ app.post('/api/download', async (req, res) => {
       ? new Date(videoInfo.duration * 1000).toISOString().substr(14, 5)
       : 'Unknown';
 
-    console.log('Selected format:', {
-      format_id: format.format_id,
-      ext: format.ext,
-      resolution: format.resolution || `${format.width}x${format.height}`,
-      filesize: format.filesize
+    // Use the best format directly
+    const format = {
+      url: videoInfo.url,
+      ext: videoInfo.ext,
+      width: videoInfo.width,
+      height: videoInfo.height,
+      filesize: videoInfo.filesize,
+      fps: videoInfo.fps,
+      format_id: videoInfo.format_id,
+      format_note: videoInfo.format_note
+    };
+
+    console.log('Video info:', {
+      title: videoInfo.title,
+      format: videoInfo.format,
+      resolution: `${videoInfo.width}x${videoInfo.height}`,
+      duration: duration
     });
 
     res.send({
       title: videoInfo.title,
-      downloadUrl: format.url,
-      format: format.format_note || `${format.height}p`,
+      downloadUrl: videoInfo.url,
+      format: videoInfo.format_note || `${videoInfo.height}p`,
       isAudioIncluded: true,
       duration: duration,
       thumbnail: videoInfo.thumbnail,
-      filesize: format.filesize,
+      filesize: videoInfo.filesize,
       description: videoInfo.description || '',
       uploadDate: videoInfo.upload_date,
       views: videoInfo.view_count,
-      resolution: format.resolution || `${format.width}x${format.height}`,
-      fps: format.fps || 'Unknown',
-      quality: format.height ? `${format.height}p` : 'Unknown'
+      resolution: `${videoInfo.width}x${videoInfo.height}`,
+      fps: videoInfo.fps || 'Unknown',
+      quality: videoInfo.height ? `${videoInfo.height}p` : 'Unknown'
     });
 
   } catch (error) {
