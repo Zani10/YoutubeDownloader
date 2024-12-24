@@ -6,7 +6,7 @@ const contentDisposition = require('content-disposition');
 const app = express();
 app.use(express.json());
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://your-frontend-domain.vercel.app'],
+  origin: ['https://youtube-downloader-wdq8.vercel.app'],
   methods: ['GET', 'POST'],
   credentials: true
 }));
@@ -147,5 +147,7 @@ app.post('/api/download', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
